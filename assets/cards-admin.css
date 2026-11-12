@@ -1,0 +1,26 @@
+.fcp-card-print-area{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0 28px}
+.fcp-card-sheet{width:85.6mm;height:54mm;box-sizing:border-box;padding:5mm 5.5mm;border-radius:3.5mm;background:#f6f3ee;color:#1d1d1f;display:flex;flex-direction:column;justify-content:space-between;font-family:Vazirmatn,Tahoma,sans-serif;box-shadow:0 1px 8px #0002;position:relative;overflow:hidden;page-break-inside:avoid;break-inside:avoid}
+.fcp-cb-top{display:flex;align-items:center;justify-content:space-between}
+.fcp-cb-brand{display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:700;color:#111}
+.fcp-cb-brand .fcp-wordmark b{color:#2b6fff}
+.fcp-mark-accent{fill:#2b6fff}
+.fcp-cb-badge{font-size:7.5px;font-weight:700;color:#f6dc9a;background:#15161a;border:.3mm solid #c8963e;border-radius:99px;padding:.7mm 2.4mm}
+.fcp-cb-welcome small{display:block;font-size:7px;color:#86868b}
+.fcp-cb-welcome strong{display:block;font-size:12.5px;line-height:1.4}
+.fcp-cb-welcome em{font-style:normal;font-size:7.5px;color:#6e6e73}
+.fcp-cb-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:4mm}
+.fcp-cb-bottom dl{margin:0;background:#fff;border-radius:2.4mm;padding:2mm 3mm;flex:1}
+.fcp-cb-bottom dl>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:.9mm 0}
+.fcp-cb-bottom dl>div+div{border-top:.2mm solid #e5e5ea}
+.fcp-cb-bottom dt{font-size:7px;color:#86868b}
+.fcp-cb-bottom dd{margin:0;font:600 9px/1.3 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.03em}
+.fcp-cb-qr{background:#fff;border-radius:2mm;padding:1.4mm;text-align:center}
+.fcp-cb-qr svg{display:block;width:21mm;height:21mm}
+.fcp-cb-qr small{display:block;font-size:5.5px;color:#6e6e73;margin-top:.5mm}
+@media print{
+ body *{visibility:hidden}
+ .fcp-card-print-area,.fcp-card-print-area *{visibility:visible}
+ .fcp-card-print-area{position:absolute;inset:0 auto auto 0;display:block;margin:0}
+ .fcp-card-sheet{box-shadow:none;margin:0 0 6mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .fcp-no-print,#wpadminbar,#adminmenumain{display:none!important}
+}
