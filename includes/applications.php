@@ -200,4 +200,3 @@ function fcp_handle_download_resume() {
     header( 'Content-Length: ' . filesize( $path ) );
     readfile( $path );
     exit;
-}
