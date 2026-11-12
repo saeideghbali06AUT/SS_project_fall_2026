@@ -63,18 +63,26 @@ function fcp_render_dashboard() {
     $user     = wp_get_current_user();
     $must     = fcp_must_change_password( $user->ID );
     $notice   = isset( $_GET['fcp_notice'] ) ? sanitize_key( wp_unslash( $_GET['fcp_notice'] ) ) : '';
-    $notices  = fcp_dashboard_notices();
+    $notices  = array_merge( fcp_dashboard_notices(), fcp_advice_notices() );
     $edit_id  = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
     $editing  = $edit_id ? get_post( $edit_id ) : null;
     if ( $editing && ( 'fcp_opportunity' !== $editing->post_type || ( (int) $editing->post_author !== $user->ID && ! current_user_can( 'manage_options' ) ) ) ) {
         $editing = null;
     }
-    $tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'list';
-    if ( ! in_array( $tab, array( 'list', 'applications', 'new', 'profile', 'security' ), true ) ) {
-        $tab = 'list';
+    $adv_edit_id = isset( $_GET['edit_advice'] ) ? absint( $_GET['edit_advice'] ) : 0;
+    $adv_editing = $adv_edit_id ? get_post( $adv_edit_id ) : null;
+    if ( $adv_editing && ( 'fcp_advice' !== $adv_editing->post_type || ( (int) $adv_editing->post_author !== $user->ID && ! current_user_can( 'manage_options' ) ) ) ) {
+        $adv_editing = null;
+    }
+    $tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'advice';
+    if ( ! in_array( $tab, array( 'advice', 'advice_new', 'list', 'applications', 'new', 'profile', 'security' ), true ) ) {
+        $tab = 'advice';
     }
     if ( $editing ) {
         $tab = 'new';
+    }
+    if ( $adv_editing ) {
+        $tab = 'advice_new';
     }
     if ( $must ) {
         $tab = 'security';
@@ -86,9 +94,17 @@ function fcp_render_dashboard() {
         if ( 'pending' === $p->post_status ) { $n_pend++; }
         $views += (int) get_post_meta( $p->ID, '_fcp_views', true );
     }
+    $advice_posts = get_posts( array( 'post_type' => 'fcp_advice', 'post_status' => array( 'publish', 'pending', 'draft' ), 'author' => $user->ID, 'posts_per_page' => 100, 'orderby' => 'date', 'order' => 'DESC' ) );
+    $adv_pub      = 0;
+    foreach ( $advice_posts as $ap ) {
+        if ( 'publish' === $ap->post_status ) { $adv_pub++; }
+    }
+    $adv_helpful = fcp_professor_helpful_total( $user->ID );
     $counts = fcp_count_applications( $user->ID );
     $dash   = fcp_page_url( 'dashboard' );
     $tabs   = array(
+        'advice'       => 'توصیه‌ها',
+        'advice_new'   => 'توصیه جدید',
         'list'         => 'آگهی‌ها',
         'applications' => 'درخواست‌ها' . ( $counts['new'] ? ' (' . fcp_digits( $counts['new'] ) . ')' : '' ),
         'new'          => 'آگهی جدید',
@@ -105,6 +121,8 @@ function fcp_render_dashboard() {
         <?php if ( $must ) : ?><div class="fcp-notice is-warn">برای ادامه، رمز موقت کارت دسترسی را عوض کنید.</div><?php endif; ?>
         <?php if ( $notice && isset( $notices[ $notice ] ) ) : ?><div class="fcp-notice is-<?php echo esc_attr( $notices[ $notice ][1] ); ?>" role="status"><?php echo esc_html( $notices[ $notice ][0] ); ?></div><?php endif; ?>
         <div class="fcp-stats">
+            <div class="is-hl"><strong><?php echo esc_html( fcp_digits( $adv_pub ) ); ?></strong><span>توصیه منتشرشده</span></div>
+            <div class="is-hl"><strong><?php echo esc_html( fcp_digits( $adv_helpful ) ); ?></strong><span>نظر «مفید بود»</span></div>
             <div><strong><?php echo esc_html( fcp_digits( $n_pub ) ); ?></strong><span>آگهی منتشرشده</span></div>
             <div><strong><?php echo esc_html( fcp_digits( $n_pend ) ); ?></strong><span>در انتظار تأیید</span></div>
             <div><strong><?php echo esc_html( fcp_digits( $counts['all'] ) ); ?></strong><span>درخواست دریافتی</span></div>
@@ -119,6 +137,10 @@ function fcp_render_dashboard() {
             <?php
             if ( 'security' === $tab ) {
                 fcp_render_password_form();
+            } elseif ( 'advice_new' === $tab ) {
+                fcp_render_advice_form( $adv_editing );
+            } elseif ( 'advice' === $tab ) {
+                fcp_render_advice_list( $advice_posts, $dash );
             } elseif ( 'new' === $tab ) {
                 fcp_render_opportunity_form( $editing );
             } elseif ( 'profile' === $tab ) {

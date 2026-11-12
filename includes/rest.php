@@ -21,17 +21,28 @@ function fcp_rest_search( WP_REST_Request $request ) {
     }
     $q = mb_substr( $q, 0, 80 );
     $query = new WP_Query( array(
-        'post_type'           => 'fcp_opportunity',
+        'post_type'           => array( 'fcp_opportunity', 'fcp_advice' ),
         'post_status'         => 'publish',
-        'posts_per_page'      => 6,
+        'posts_per_page'      => 8,
         's'                   => $q,
         'ignore_sticky_posts' => true,
         'no_found_rows'       => true,
     ) );
     $out = array();
     foreach ( $query->posts as $post ) {
+        $author = get_userdata( (int) $post->post_author );
+        if ( 'fcp_advice' === $post->post_type ) {
+            $m      = fcp_advice_meta( $post->ID );
+            $out[]  = array(
+                'title'    => get_the_title( $post ),
+                'url'      => get_permalink( $post ),
+                'category' => 'توصیه' . ( $m['topic_label'] ? ' · ' . $m['topic_label'] : '' ),
+                'author'   => $author ? $author->display_name : '',
+                'note'     => fcp_advice_audiences()[ $m['audience'] ]['short'],
+            );
+            continue;
+        }
         $term     = fcp_opportunity_category( $post->ID );
-        $author   = get_userdata( (int) $post->post_author );
         $deadline = fcp_deadline_info( $post->ID );
         $out[]    = array(
             'title'    => get_the_title( $post ),

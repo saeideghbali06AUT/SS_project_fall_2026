@@ -52,3 +52,21 @@ SELECT a.id, a.student_name, a.student_email, a.created_at
 FROM wp_fcp_applications AS a
 WHERE a.professor_id = 2 AND a.status = 'new'   -- replace 2 with the professor's user ID
 ORDER BY a.created_at DESC;
+
+-- 7) Published advice with audience, topic and helpful votes (v2.1)
+SELECT p.ID, p.post_title, u.display_name AS professor,
+       aud.meta_value AS audience, tp.meta_value AS topic,
+       (SELECT COUNT(*) FROM wp_fcp_advice_votes v WHERE v.advice_id = p.ID) AS helpful_votes
+FROM wp_posts AS p
+LEFT JOIN wp_users AS u ON u.ID = p.post_author
+LEFT JOIN wp_postmeta AS aud ON aud.post_id = p.ID AND aud.meta_key = '_fcp_audience'
+LEFT JOIN wp_postmeta AS tp  ON tp.post_id  = p.ID AND tp.meta_key  = '_fcp_topic'
+WHERE p.post_type = 'fcp_advice' AND p.post_status = 'publish'
+ORDER BY helpful_votes DESC, p.post_date DESC;
+
+-- 8) Advice waiting for admin approval (v2.1)
+SELECT p.ID, p.post_title, p.post_date, u.display_name AS professor
+FROM wp_posts AS p
+LEFT JOIN wp_users AS u ON u.ID = p.post_author
+WHERE p.post_type = 'fcp_advice' AND p.post_status = 'pending'
+ORDER BY p.post_date ASC;

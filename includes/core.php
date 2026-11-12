@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function fcp_register_content() {
+    fcp_register_advice();
     register_taxonomy( 'fcp_category', array( 'fcp_opportunity' ), array(
         'labels'       => array(
             'name'          => 'دسته‌بندی فرصت‌ها',
@@ -48,17 +49,10 @@ function fcp_page_url( $key ) {
     return $id && get_post_status( $id ) ? get_permalink( $id ) : home_url( '/' );
 }
 
-function fcp_activate() {
-    fcp_register_content();
-    add_role( 'fcp_professor', 'استاد دانشکده', array( 'read' => true ) );
-    fcp_install_db();
-    fcp_ensure_private_dir();
-    if ( false === get_option( 'fcp_settings', false ) ) {
-        add_option( 'fcp_settings', fcp_default_settings() );
-    }
-
+function fcp_ensure_pages() {
     $page_titles = array(
         'home'       => array( 'خانه', 'faculty-home' ),
+        'advice'     => array( 'توصیه‌ها', 'faculty-advice' ),
         'professors' => array( 'اساتید', 'faculty-professors' ),
         'categories' => array( 'دسته‌بندی‌ها', 'faculty-categories' ),
         'about'      => array( 'درباره ما', 'faculty-about' ),
@@ -92,6 +86,19 @@ function fcp_activate() {
         }
     }
     update_option( 'fcp_pages', $pages );
+    return $pages;
+}
+
+function fcp_activate() {
+    fcp_register_content();
+    add_role( 'fcp_professor', 'استاد دانشکده', array( 'read' => true ) );
+    fcp_install_db();
+    fcp_ensure_private_dir();
+    if ( false === get_option( 'fcp_settings', false ) ) {
+        add_option( 'fcp_settings', fcp_default_settings() );
+    }
+
+    $pages = fcp_ensure_pages();
 
     $defaults = array(
         'research'   => 'پژوهشی',
@@ -130,7 +137,7 @@ function fcp_is_professor( $user = null ) {
 }
 
 function fcp_is_portal_request() {
-    if ( is_singular( 'fcp_opportunity' ) ) {
+    if ( is_singular( array( 'fcp_opportunity', 'fcp_advice' ) ) ) {
         return true;
     }
     return is_page() && (bool) get_post_meta( get_queried_object_id(), '_fcp_page', true );
@@ -157,8 +164,14 @@ function fcp_enqueue_assets() {
     wp_enqueue_script( 'fcp-portal-script', FCP_URL . 'assets/portal.js', array(), FCP_VERSION, true );
     wp_localize_script( 'fcp-portal-script', 'FCP', array(
         'search'  => esc_url_raw( rest_url( 'fcp/v1/search' ) ),
+        'vote'    => esc_url_raw( rest_url( 'fcp/v1/advice/' ) ),
+        'voteErr' => 'ثبت نظر انجام نشد. کمی بعد دوباره تلاش کنید.',
+        'copied'  => 'پیوند کپی شد',
+        'saved'   => 'به ذخیره‌شده‌ها اضافه شد',
+        'unsaved' => 'از ذخیره‌شده‌ها برداشته شد',
+        'noAdvice'=> 'توصیه‌ای با این فیلتر پیدا نشد.',
         'noMatch' => 'نتیجه‌ای پیدا نشد. عبارت دیگری را امتحان کنید.',
-        'hint'    => 'عنوان فرصت، نام استاد یا زمینه پژوهشی را بنویسید.',
+        'hint'    => 'عنوان فرصت یا توصیه، نام استاد یا زمینه پژوهشی را بنویسید.',
         'error'   => 'جست‌وجو انجام نشد. دوباره تلاش کنید.',
     ) );
 }
@@ -380,13 +393,16 @@ function fcp_maybe_upgrade() {
         if ( false === get_option( 'fcp_settings', false ) ) {
             add_option( 'fcp_settings', fcp_default_settings() );
         }
+        // New pages (e.g. «توصیه‌ها») and the new advice permalinks for sites upgraded from an older version.
+        fcp_ensure_pages();
+        flush_rewrite_rules();
     }
 }
 
 /* ---------- View counter ---------- */
 
 function fcp_track_view() {
-    if ( ! is_singular( 'fcp_opportunity' ) || is_user_logged_in() ) {
+    if ( ! is_singular( array( 'fcp_opportunity', 'fcp_advice' ) ) || is_user_logged_in() ) {
         return;
     }
     $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? strtolower( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) ) : '';

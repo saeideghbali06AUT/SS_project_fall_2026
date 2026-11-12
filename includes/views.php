@@ -12,8 +12,11 @@ function fcp_view_key() {
     if ( is_singular( 'fcp_opportunity' ) ) {
         return 'single';
     }
+    if ( is_singular( 'fcp_advice' ) ) {
+        return 'single_advice';
+    }
     $key = get_post_meta( get_queried_object_id(), '_fcp_page', true );
-    return in_array( $key, array( 'home', 'professors', 'categories', 'about', 'more', 'login', 'dashboard' ), true ) ? $key : 'home';
+    return in_array( $key, array( 'home', 'advice', 'professors', 'categories', 'about', 'more', 'login', 'dashboard' ), true ) ? $key : 'home';
 }
 
 function fcp_icon( $name ) {
@@ -29,8 +32,10 @@ function fcp_icon( $name ) {
 
 function fcp_render_header() {
     $view = fcp_view_key();
+    $view = 'single_advice' === $view ? 'advice' : $view;
     $menu = array(
         'home'       => 'خانه',
+        'advice'     => 'توصیه‌ها',
         'categories' => 'فرصت‌ها',
         'professors' => 'اساتید',
         'about'      => 'درباره ما',
@@ -60,11 +65,11 @@ function fcp_render_header() {
         </div>
     </header>
 
-    <div class="fcp-search" id="fcp-search" role="dialog" aria-modal="true" aria-label="جست‌وجوی فرصت‌ها" hidden>
+    <div class="fcp-search" id="fcp-search" role="dialog" aria-modal="true" aria-label="جست‌وجو" hidden>
         <div class="fcp-search-inner">
             <form class="fcp-search-form" role="search" method="get" action="<?php echo esc_url( fcp_page_url( 'categories' ) ); ?>">
                 <?php echo fcp_icon( 'search' ); ?>
-                <input id="fcp-search-input" type="search" name="q" placeholder="جست‌وجوی فرصت، استاد یا مهارت" autocomplete="off" />
+                <input id="fcp-search-input" type="search" name="q" placeholder="جست‌وجوی فرصت، توصیه، استاد یا مهارت" autocomplete="off" />
                 <button type="button" class="fcp-search-close" data-fcp-search-close>بستن</button>
             </form>
             <p class="fcp-search-hint" id="fcp-search-hint">عنوان فرصت، نام استاد یا زمینه پژوهشی را بنویسید.</p>
@@ -85,8 +90,9 @@ function fcp_render_footer() {
     ?>
     <footer class="fcp-footer">
         <div class="fcp-wrap">
-            <p class="fcp-footer-note"><?php echo esc_html( fcp_setting( 'university' ) ); ?>. فرصت‌های پژوهشی و شغلی این سامانه را اساتید منتشر می‌کنند و پیش از نمایش عمومی تأیید می‌شوند.</p>
+            <p class="fcp-footer-note"><?php echo esc_html( fcp_setting( 'university' ) ); ?>. توصیه‌ها و فرصت‌های پژوهشی و شغلی این سامانه را اساتید منتشر می‌کنند و پیش از نمایش عمومی تأیید می‌شوند.</p>
             <div class="fcp-footer-cols">
+                <div><h4>توصیه‌ها</h4><a href="<?php echo esc_url( fcp_advice_url( 'newcomer' ) ); ?>">برای نو‌ورودها</a><a href="<?php echo esc_url( fcp_advice_url( 'senior' ) ); ?>">برای باتجربه‌ترها</a></div>
                 <div><h4>فرصت‌ها</h4><a href="<?php echo esc_url( fcp_page_url( 'categories' ) ); ?>">همه فرصت‌ها</a><?php foreach ( array_slice( fcp_all_categories(), 0, 4 ) as $term ) : ?><a href="<?php echo esc_url( add_query_arg( 'cat', $term->term_id, fcp_page_url( 'categories' ) ) ); ?>"><?php echo esc_html( $term->name ); ?></a><?php endforeach; ?></div>
                 <div><h4>اساتید</h4><a href="<?php echo esc_url( fcp_page_url( 'professors' ) ); ?>">فهرست اساتید</a><a href="<?php echo esc_url( fcp_page_url( 'login' ) ); ?>">ورود اساتید</a></div>
                 <div><h4>سامانه</h4><a href="<?php echo esc_url( fcp_page_url( 'about' ) ); ?>">درباره ما</a><a href="<?php echo esc_url( fcp_page_url( 'more' ) ); ?>">سؤال‌های پرتکرار</a><?php if ( $email ) : ?><a href="mailto:<?php echo esc_attr( $email ); ?>"><?php echo esc_html( $email ); ?></a><?php endif; ?></div>
@@ -100,6 +106,8 @@ function fcp_render_footer() {
 function fcp_render_view() {
     switch ( fcp_view_key() ) {
         case 'home': fcp_render_home(); break;
+        case 'advice': fcp_render_advice_page(); break;
+        case 'single_advice': fcp_render_advice_single(); break;
         case 'professors': fcp_render_professors(); break;
         case 'categories': fcp_render_categories(); break;
         case 'about': fcp_render_about(); break;
@@ -168,17 +176,20 @@ function fcp_render_home() {
     $prof_n    = count( get_users( array( 'role' => 'fcp_professor', 'fields' => 'ID' ) ) );
     $cats      = fcp_all_categories();
     $apps_n    = fcp_total_applications();
+    $advice_n  = fcp_count_advice();
     $blurbs    = fcp_category_blurbs();
     $latest    = new WP_Query( array( 'post_type' => 'fcp_opportunity', 'post_status' => 'publish', 'posts_per_page' => 10, 'orderby' => 'date', 'order' => 'DESC', 'ignore_sticky_posts' => true, 'no_found_rows' => true ) );
     $float     = array_slice( $latest->posts, 0, 3 );
     ?>
-    <section class="fcp-hero">
+    <section class="fcp-hero" data-fcp-parallax>
+        <div class="fcp-orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div>
         <div class="fcp-wrap fcp-hero-copy">
             <p class="fcp-kicker"><?php echo esc_html( fcp_setting( 'university' ) ); ?></p>
             <h1 class="fcp-display"><span>استاد پیشنهاد می‌دهد.</span> <span class="fcp-dim">تو شروع می‌کنی.</span></h1>
-            <p class="fcp-lead">در <?php echo esc_html( fcp_setting( 'name_fa' ) ); ?>، اساتید فرصت‌های پژوهشی، پایان‌نامه و کارآموزی را منتشر می‌کنند و دانشجوها مستقیم به همان استاد درخواست می‌دهند.</p>
+            <p class="fcp-lead">در <?php echo esc_html( fcp_setting( 'name_fa' ) ); ?>، اساتید برای دانشجوها توصیه می‌نویسند؛ از اولین ترم تا پایان‌نامه و ارشد. فرصت‌های پژوهشی و کارآموزی هم همین‌جاست و دانشجوها مستقیم به همان استاد درخواست می‌دهند.</p>
             <div class="fcp-cta-row">
-                <a class="fcp-btn" href="<?php echo esc_url( fcp_page_url( 'categories' ) ); ?>">مشاهده فرصت‌ها</a>
+                <a class="fcp-btn" href="<?php echo esc_url( fcp_advice_url() ); ?>">خواندن توصیه‌های اساتید</a>
+                <a class="fcp-link fcp-link-lg" href="<?php echo esc_url( fcp_page_url( 'categories' ) ); ?>">مشاهده فرصت‌ها</a>
                 <a class="fcp-link fcp-link-lg" href="<?php echo esc_url( fcp_page_url( 'login' ) ); ?>">ورود اساتید</a>
             </div>
         </div>
@@ -200,8 +211,10 @@ function fcp_render_home() {
     </section>
 
     <section class="fcp-statement" data-fcp-words>
-        <div class="fcp-wrap"><p>آشنایی با یک استاد، اغلب از یک ایمیل بی‌جواب شروع می‌شود. اینجا هر فرصت، با شرایط و مهلت روشن، منتشر می‌شود و دانشجو می‌داند دقیقاً به چه کسی و برای چه کاری درخواست می‌دهد.</p></div>
+        <div class="fcp-wrap"><p>آشنایی با یک استاد، اغلب از یک ایمیل بی‌جواب شروع می‌شود. اینجا هر فرصت، با شرایط و مهلت روشن، منتشر می‌شود و دانشجو می‌داند دقیقاً به چه کسی و برای چه کاری درخواست می‌دهد. پیش از هر درخواستی هم می‌توانی از تجربه‌ی همین اساتید بشنوی.</p></div>
     </section>
+
+    <?php fcp_render_home_advice(); ?>
 
     <section class="fcp-story" data-fcp-story>
         <div class="fcp-story-pin">
@@ -259,6 +272,7 @@ function fcp_render_home() {
 
     <section class="fcp-numbers" data-fcp-counters>
         <div class="fcp-wrap fcp-numbers-grid">
+            <div><strong data-fcp-count="<?php echo (int) $advice_n; ?>"><?php echo esc_html( fcp_digits( $advice_n ) ); ?></strong><span>توصیه منتشرشده</span></div>
             <div><strong data-fcp-count="<?php echo (int) $published; ?>"><?php echo esc_html( fcp_digits( $published ) ); ?></strong><span>فرصت منتشرشده</span></div>
             <div><strong data-fcp-count="<?php echo (int) $prof_n; ?>"><?php echo esc_html( fcp_digits( $prof_n ) ); ?></strong><span>استاد عضو سامانه</span></div>
             <div><strong data-fcp-count="<?php echo (int) $apps_n; ?>"><?php echo esc_html( fcp_digits( $apps_n ) ); ?></strong><span>درخواست ثبت‌شده</span></div>
@@ -280,8 +294,8 @@ function fcp_render_home() {
     <section class="fcp-wrap fcp-pro">
         <div class="fcp-pro-card">
             <span class="fcp-gold-badge">★ حساب ویژه استاد</span>
-            <h2>فرصت دارید؟ دانشجوی مناسب را پیدا کنید.</h2>
-            <p>با حساب اختصاصی وارد شوید، فرصت‌هایتان را منتشر کنید و درخواست‌ها را در یک صفحه مدیریت کنید.</p>
+            <h2>تجربه یا فرصتی دارید؟ به دانشجوها برسانید.</h2>
+            <p>با حساب اختصاصی وارد شوید، توصیه بنویسید، فرصت‌هایتان را منتشر کنید و درخواست‌ها را در یک صفحه مدیریت کنید.</p>
             <a class="fcp-btn is-light" href="<?php echo esc_url( fcp_page_url( 'login' ) ); ?>">ورود به پنل استاد</a>
         </div>
     </section>
@@ -317,6 +331,16 @@ function fcp_render_professors() {
             <?php
             $query = new WP_Query( array( 'post_type' => 'fcp_opportunity', 'post_status' => 'publish', 'author' => $user->ID, 'posts_per_page' => 50, 'orderby' => 'date', 'order' => 'DESC', 'no_found_rows' => true ) );
             fcp_render_cards_query( $query, 'این استاد هنوز فرصتی منتشر نکرده است.' );
+            $adv = new WP_Query( array( 'post_type' => 'fcp_advice', 'post_status' => 'publish', 'author' => $user->ID, 'posts_per_page' => 30, 'orderby' => 'date', 'order' => 'DESC', 'no_found_rows' => true ) );
+            if ( $adv->have_posts() ) {
+                echo '<h2 class="fcp-h2 fcp-after-h2">توصیه‌های این استاد</h2><div class="fcp-advice-grid">';
+                while ( $adv->have_posts() ) {
+                    $adv->the_post();
+                    fcp_render_advice_card( get_the_ID() );
+                }
+                wp_reset_postdata();
+                echo '</div>';
+            }
         }
     } else {
         $users = get_users( array( 'role' => 'fcp_professor', 'orderby' => 'display_name', 'order' => 'ASC' ) );
@@ -431,6 +455,7 @@ function fcp_render_about() {
     <section class="fcp-statement is-static" data-fcp-words><div class="fcp-wrap"><p>«راوی» کسی است که دانش را به دیگران می‌رساند. ما همین نقش را به یک سامانه ساده تبدیل کرده‌ایم: استاد می‌نویسد، دانشجو می‌خواند و میان این دو، یک گفت‌وگوی روشن شکل می‌گیرد.</p></div></section>
     <section class="fcp-wrap fcp-section">
         <div class="fcp-rows">
+            <div><h3>توصیه از زبان اساتید</h3><p>اساتید برای نو‌ورودها و دانشجوهای باتجربه‌تر توصیه می‌نویسند؛ از شروع دانشگاه تا پایان‌نامه و ارشد.</p></div>
             <div><h3>انتشار توسط استاد</h3><p>هر استاد با حساب اختصاصی خودش آگهی ثبت می‌کند و مسئول محتوای آن است.</p></div>
             <div><h3>تأیید پیش از نمایش</h3><p>آگهی تازه و هر ویرایش، قبل از دیده‌شدن در سایت توسط مدیر بررسی می‌شود.</p></div>
             <div><h3>درخواست بدون حساب</h3><p>دانشجو برای درخواست نیازی به ثبت‌نام ندارد و پاسخ را از راه ایمیل می‌گیرد.</p></div>
@@ -444,6 +469,7 @@ function fcp_render_about() {
 function fcp_render_more() {
     fcp_render_page_heading( 'سایر', 'پیوندهای مفید و پاسخ سؤال‌های پرتکرار.' );
     $faq = array(
+        array( 'توصیه‌ها را چه کسی می‌نویسد؟', 'اساتید با حساب اختصاصی‌شان. هر توصیه پیش از انتشار توسط مدیر بررسی می‌شود. دکمه «مفید بود» بدون ثبت‌نام کار می‌کند و به توصیه‌های خوب کمک می‌کند دیده شوند.' ),
         array( 'برای درخواست باید ثبت‌نام کنم؟', 'نه. در صفحه هر فرصت، فرم درخواست را پر می‌کنید و پاسخ استاد به ایمیلتان می‌رسد.' ),
         array( 'رزومه‌ام را چه کسی می‌بیند؟', 'فقط استادی که آگهی را منتشر کرده. فایل‌ها در فضای خصوصی سایت نگهداری می‌شوند و پیوند عمومی ندارند.' ),
         array( 'چرا آگهی من هنوز دیده نمی‌شود؟', 'آگهی‌های تازه و ویرایش‌شده ابتدا توسط مدیر تأیید می‌شوند. وضعیت را در پنل استاد می‌بینید.' ),
@@ -452,6 +478,7 @@ function fcp_render_more() {
     ?>
     <section class="fcp-wrap fcp-section">
         <div class="fcp-grid is-links">
+            <a class="fcp-tile" href="<?php echo esc_url( fcp_advice_url() ); ?>"><h3>توصیه‌های اساتید</h3><p>راهنمایی برای نو‌ورودها و دانشجوهای باتجربه‌تر.</p></a>
             <a class="fcp-tile" href="<?php echo esc_url( fcp_page_url( 'categories' ) ); ?>"><h3>جست‌وجوی فرصت‌ها</h3><p>مرور و فیلتر همه آگهی‌های منتشرشده.</p></a>
             <a class="fcp-tile" href="<?php echo esc_url( fcp_page_url( 'professors' ) ); ?>"><h3>فهرست اساتید</h3><p>پروفایل و فرصت‌های هر استاد.</p></a>
             <a class="fcp-tile" href="<?php echo esc_url( fcp_page_url( 'login' ) ); ?>"><h3>ورود اساتید</h3><p>ثبت آگهی و مدیریت درخواست‌ها.</p></a>

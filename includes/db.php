@@ -38,6 +38,18 @@ function fcp_install_db() {
   KEY created_at (created_at)
 ) {$charset};";
     dbDelta( $sql );
+
+    $votes = fcp_table_votes();
+    $sql2  = "CREATE TABLE {$votes} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  advice_id bigint(20) unsigned NOT NULL,
+  voter_hash char(64) NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY advice_voter (advice_id,voter_hash),
+  KEY created_at (created_at)
+) {$charset};";
+    dbDelta( $sql2 );
     update_option( 'fcp_db_version', FCP_DB_VERSION );
 }
 

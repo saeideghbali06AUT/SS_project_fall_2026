@@ -6,6 +6,32 @@
 
 > در مثال‌های زیر پیشوند جداول `wp_` است. در وردپرس نصب‌شده ممکن است پیشوند دیگری تنظیم شده باشد؛ برای یافتن آن، مقدار `$table_prefix` را در `wp-config.php` ببینید.
 
+## افزوده‌ی نسخه ۲.۱: توصیه‌ها
+
+نوع محتوای `fcp_advice` (در `wp_posts`) برای توصیه‌ها و یک جدول سبک برای رأی‌ها. نسخه‌ی ساختار: `fcp_db_version = 3`.
+
+**`wp_posts` با `post_type = 'fcp_advice'`**: `post_title` عنوان، `post_content` متن (متن ساده با `## ` و `- `)، `post_excerpt` خلاصه‌ی اختیاری، `post_author` استاد نویسنده، `post_status` برابر `pending` پس از ارسال و `publish` پس از تأیید مدیر.
+
+| `meta_key` (در `wp_postmeta`) | کاربرد |
+|---|---|
+| `_fcp_audience` | `newcomer` یا `senior` |
+| `_fcp_topic` | موضوع؛ فقط ترکیب‌های معتبر پذیرفته می‌شود (پایین) |
+| `_fcp_helpful` | شمارنده‌ی ذخیره‌شده‌ی رأی‌ها برای مرتب‌سازی؛ منبع حقیقت جدول رأی‌هاست |
+| `_fcp_views` | بازدید (مثل آگهی‌ها) |
+
+موضوع‌های معتبر: برای `newcomer` ← `start`, `study`, `skills`, `general`؛ برای `senior` ← `field`, `thesis`, `masters`, `career`, `general`. اعتبارسنجی هم در فرم استاد و هم در پیشخوان مدیر روی سرور انجام می‌شود.
+
+**جدول `wp_fcp_advice_votes`**
+
+| ستون | نوع | توضیح |
+|---|---|---|
+| `id` | bigint PK | |
+| `advice_id` | bigint | `wp_posts.ID` توصیه |
+| `voter_hash` | char(64) | SHA-256 نمکی از IP و مرورگر؛ قابل بازگشت به IP نیست |
+| `created_at` | datetime | |
+
+کلیدها: `UNIQUE (advice_id, voter_hash)` (هر بازدیدکننده فقط یک رأی)، `KEY (created_at)`. با حذف دائمی توصیه، رأی‌هایش هم حذف می‌شوند. رأی‌دادن دوباره، رأی را برمی‌دارد (toggle).
+
 ## نمودار روابط
 
 ```mermaid

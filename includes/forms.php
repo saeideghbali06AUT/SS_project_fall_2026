@@ -5,6 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 function fcp_redirect_dashboard( $code, $tab = '' ) {
     $args = array( 'fcp_notice' => $code );
+    if ( ! $tab ) {
+        // Opportunity-related results return to the opportunity tabs (the default tab is now «توصیه‌ها»).
+        $map = array( 'saved' => 'list', 'withdrawn' => 'list', 'deleted' => 'list', 'required' => 'new', 'date' => 'new', 'profile' => 'profile' );
+        $tab = isset( $map[ $code ] ) ? $map[ $code ] : '';
+    }
     if ( $tab ) {
         $args['tab'] = $tab;
     }
